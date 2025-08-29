@@ -88,7 +88,7 @@ function App() {
 
         {/* 중앙 DBI LAB 텍스트 */}
         <div className={`center-text ${isContactPage ? 'contact-mode' : ''}`}>
-          <span className="dbi-text">DBI&nbsp;</span>
+          <span className="dbi-text">DBI</span>
           <span className={`lab-text ${isContactPage ? 'contact-mode' : ''}`}>LAB</span>
         </div>
       </div>
