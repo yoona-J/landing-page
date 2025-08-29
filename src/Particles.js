@@ -1,104 +1,110 @@
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from 'react';
 
-// Config copied from the referenced CodePen and adapted to JS object
-const PARTICLES_CONFIG = {
-  particles: {
-    number: { value: 38, density: { enable: true, value_area: 946.9790382244144 } },
-    color: { value: "#f2f2f2" },
-    shape: {
-      type: "edge",
-      stroke: { width: 0, color: "#000000" },
-      polygon: { nb_sides: 5 },
-      image: { src: "img/github.svg", width: 20, height: 20 },
-    },
-    opacity: { value: 0.5, random: false, anim: { enable: false, speed: 1, opacity_min: 0.1, sync: false } },
-    size: { value: 3, random: true, anim: { enable: false, speed: 40, size_min: 0.1, sync: false } },
-    line_linked: { enable: true, distance: 150, color: "#ffffff", opacity: 0.4, width: 1 },
-    move: {
-      enable: true,
-      speed: 6,
-      direction: "none",
-      random: false,
-      straight: false,
-      out_mode: "out",
-      bounce: false,
-      attract: { enable: false, rotateX: 600, rotateY: 1200 },
-    },
-  },
-  interactivity: {
-    detect_on: "canvas",
-    events: {
-      onhover: { enable: true, mode: "repulse" },
-      onclick: { enable: true, mode: "push" },
-      resize: true,
-    },
-    modes: {
-      grab: { distance: 400, line_linked: { opacity: 1 } },
-      bubble: { distance: 400, size: 40, duration: 2, opacity: 8, speed: 3 },
-      repulse: { distance: 200, duration: 0.4 },
-      push: { particles_nb: 4 },
-      remove: { particles_nb: 2 },
-    },
-  },
-  retina_detect: true,
-};
-
-export default function ParticlesBackground({
-  id = "particles-js",
-  className = "",
-  backgroundColor = "#b61924",
-  backgroundImage = "",
-  backgroundPosition = "50% 50%",
-  backgroundSize = "cover",
-  backgroundRepeat = "no-repeat",
-}) {
-  const containerRef = useRef(null);
+const Particles = ({ id, backgroundColor }) => {
+  const canvasRef = useRef(null);
 
   useEffect(() => {
-    let canceled = false;
-    const el = containerRef.current; // ← 스냅샷
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    let animationFrameId;
 
-    (async () => {
-      await import("particles.js");
-      const { particlesJS } = window;
-      if (!particlesJS || canceled) return;
-      particlesJS(id, PARTICLES_CONFIG);
-    })();
+    // Canvas 크기 설정
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
 
-    return () => {
-      canceled = true;
-      // Graceful teardown to prevent multiple canvases piling up
-      const anyWin = window;
-      if (anyWin.pJSDom && anyWin.pJSDom.length) {
-        anyWin.pJSDom.forEach((p) => {
-          try {
-            p?.pJS?.fn?.vendors?.destroypJS?.();
-          } catch (_) {}
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // 파티클 클래스
+    class Particle {
+      constructor() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.vx = (Math.random() - 0.5) * 0.5;
+        this.vy = (Math.random() - 0.5) * 0.5;
+        this.size = Math.random() * 2 + 1;
+        this.opacity = Math.random() * 0.5 + 0.2;
+      }
+
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+
+        if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+        if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+      }
+
+      draw() {
+        ctx.save();
+        ctx.globalAlpha = this.opacity;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    // 파티클 생성
+    const particles = [];
+    const particleCount = 100;
+
+    for (let i = 0; i < particleCount; i++) {
+      particles.push(new Particle());
+    }
+
+    // 애니메이션 루프
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // 배경색 설정
+      ctx.fillStyle = backgroundColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // 파티클 업데이트 및 그리기
+      particles.forEach(particle => {
+        particle.update();
+        particle.draw();
+      });
+
+      // 파티클 간 연결선 그리기
+      particles.forEach((particle, i) => {
+        particles.slice(i + 1).forEach(otherParticle => {
+          const dx = particle.x - otherParticle.x;
+          const dy = particle.y - otherParticle.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (distance < 100) {
+            ctx.save();
+            ctx.globalAlpha = (100 - distance) / 100 * 0.3;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(particle.x, particle.y);
+            ctx.lineTo(otherParticle.x, otherParticle.y);
+            ctx.stroke();
+            ctx.restore();
+          }
         });
-        // Remove leftover canvas elements inside our container (defensive)
-        if (el) {
-          el.querySelectorAll("canvas").forEach(c => c.remove()); // ← el 사용
-        }
+      });
+
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    // 클린업
+    return () => {
+      window.removeEventListener('resize', resizeCanvas);
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [id]);
+  }, [backgroundColor]);
 
-  return (
-    <div
-      id={id}
-      ref={containerRef}
-      className={className}
-      style={{
-        position: "absolute",
-        inset: 0,
-        width: "100%",
-        height: "500px",
-        backgroundColor,
-        backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
-        backgroundSize,
-        backgroundRepeat,
-        backgroundPosition,
-      }}
-    />
-  );
-}
+  return <canvas ref={canvasRef} id={id} style={{ display: 'block' }} />;
+};
+
+export default Particles;
